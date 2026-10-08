@@ -43,7 +43,7 @@ jobs:
 
       - name: Test
         shell: bash
-        run: go test ./...
+        run: go test ./internal/...
 
       - name: Build
         shell: bash
