@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="day">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <meta name="theme-color" content="#5BCEFA" />
+  <link rel="icon" type="image/x-icon" href="app-icon.ico" />
+  <title>IC-9700 Remote IO</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand-block">
+        <div class="title-block">
+          <div class="eyebrow">IC-9700 REMOTE IO</div>
+          <h1>遥控工作台</h1>
+        </div>
+        <div class="status-strip">
+          <div class="connection-indicator">
+            <span id="connectionLamp" class="lamp offline"></span>
+            <span id="connectionText">未连接</span>
+          </div>
+          <div id="connectionDetail" class="connection-detail">未配置端口</div>
+          <button id="mainConnectBtn" class="compact connection-action">连接</button>
+        </div>
+      </div>
+
+      <nav class="top-actions" aria-label="主功能">
+        <button id="exitBtn" class="menu-btn danger">退出</button>
+        <button id="connectMenuBtn" class="menu-btn">设置</button>
+        <button id="satMenuBtn" class="menu-btn sat">SAT</button>
+        <button id="themeBtn" class="menu-btn theme" title="切换昼/夜模式">☀</button>
+      </nav>
+    </header>
+
+    <main class="content">
+      <section class="grid-two compact-grid">
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">AUDIO INPUT</div>
+              <div class="panel-subtitle">DATA 输入</div>
+            </div>
+            <div class="state-cluster">
+              <div id="dataOffState" class="state-pill unknown">—</div>
+              <div id="dataState" class="state-pill unknown">—</div>
+            </div>
+          </div>
+
+          <div class="mode-label-row"><span>DATA OFF</span><span>DATA</span></div>
+          <div class="dual-choice-grid">
+            <div id="dataOffButtons" class="choice-grid"></div>
+            <div id="dataButtons" class="choice-grid"></div>
+          </div>
+
+          <div class="quick-actions">
+            <button id="setLanBtn" class="wide-action lan-action">LAN</button>
+            <button id="setUsbBtn" class="wide-action usb-action">USB</button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">USB AUDIO</div>
+              <div class="panel-subtitle">输出选择</div>
+            </div>
+            <div id="usbState" class="state-pill unknown">—</div>
+          </div>
+
+          <div class="afif-switch compact-output">
+            <button id="usbAfBtn" class="output-btn" data-value="AF">
+              <span class="big-letter">AF</span>
+              <span>Audio Frequency</span>
+            </button>
+            <button id="usbIfBtn" class="output-btn" data-value="IF">
+              <span class="big-letter">IF</span>
+              <span>Intermediate Frequency</span>
+            </button>
+          </div>
+
+          <div class="small-note">可直接切换 USB 音频输出类型</div>
+        </section>
+      </section>
+
+      <section class="panel radio-assist">
+        <div class="panel-head">
+          <div>
+            <div class="panel-title">RADIO ASSIST</div>
+            <div class="panel-subtitle">话音压缩 · CW 拍发 · RF 功率</div>
+          </div>
+          <div class="state-pill unknown" id="assistStatePill">—</div>
+        </div>
+
+        <div class="radio-assist-grid">
+          <section class="assist-control">
+            <div class="assist-head">
+              <span class="assist-title">话音压缩</span>
+              <span id="compressorState" class="assist-state unknown">—</span>
+            </div>
+            <div class="compressor-row">
+              <button id="compressorToggleBtn" class="assist-toggle">压缩开关</button>
+              <div class="level-stepper">
+                <button id="compLevelMinusBtn" class="step-btn" aria-label="降低话音压缩 level">−</button>
+                <div id="compLevelValue" class="level-value">LEVEL —</div>
+                <button id="compLevelPlusBtn" class="step-btn" aria-label="提高话音压缩 level">+</button>
+              </div>
+            </div>
+            <div class="assist-note">COMP LEVEL 0–10</div>
+          </section>
+
+          <section class="assist-control">
+            <div class="assist-head">
+              <span class="assist-title">CW keying speed</span>
+              <strong id="cwSpeedValue" class="assist-value">— WPM</strong>
+            </div>
+            <div id="cwSpeedWheelZone" class="slider-wheel-zone" title="悬停后滚动鼠标滚轮调整速度">
+              <input id="cwSpeedSlider" type="range" min="6" max="48" step="1" value="6" aria-label="CW keying speed" />
+              <div class="slider-scale"><span>6</span><span>48 WPM</span></div>
+            </div>
+            <div class="assist-note">6–48 WPM · 滚轮 ±1 WPM</div>
+          </section>
+
+          <section class="assist-control">
+            <div class="assist-head">
+              <span class="assist-title">RF power</span>
+              <strong id="rfPowerValue" class="assist-value">—%</strong>
+            </div>
+            <div id="rfPowerWheelZone" class="slider-wheel-zone" title="悬停后滚动鼠标滚轮调整功率">
+              <input id="rfPowerSlider" type="range" min="0" max="100" step="1" value="0" aria-label="RF power" />
+              <div class="slider-scale"><span>0%</span><span>100%</span></div>
+            </div>
+            <div class="assist-note">0–100% · 滚轮 ±1%</div>
+          </section>
+        </div>
+      </section>
+
+      <section class="panel telemetry">
+        <div class="telemetry-head">
+          <div class="telemetry-heading">
+            <div class="panel-title">COMMUNICATION</div>
+            <div class="panel-subtitle">CI-V 通讯记录</div>
+          </div>
+          <button id="refreshState" class="secondary small">读取状态</button>
+        </div>
+        <div class="telemetry-grid">
+          <div class="frame-card"><span>Last TX</span><code id="lastTX">No data</code></div>
+          <div class="frame-card"><span>Last RX</span><code id="lastRX">No data</code></div>
+        </div>
+        <div id="message" class="message">就绪。</div>
+      </section>
+    </main>
+
+  </div>
+
+  <div id="connectOverlay" class="overlay hidden">
+    <section class="dialog connection-dialog">
+      <div class="dialog-head">
+        <div>
+          <div class="dialog-kicker">CONNECTION</div>
+          <h2>端口配置</h2>
+        </div>
+        <button id="closeConnectBtn" class="close-btn" title="关闭">×</button>
+      </div>
+
+      <div class="form-grid">
+        <label class="field">
+          <span>串口</span>
+          <div class="input-row">
+            <select id="portSelect"></select>
+            <button id="refreshPorts" class="icon-btn" title="刷新串口">↻</button>
+          </div>
+        </label>
+        <label class="field">
+          <span>波特率</span>
+          <select id="baudSelect">
+            <option value="115200">115200</option>
+            <option value="57600">57600</option>
+            <option value="38400">38400</option>
+            <option value="19200">19200</option>
+            <option value="9600">9600</option>
+          </select>
+        </label>
+      </div>
+
+      <div id="connectDialogMessage" class="dialog-message">选择端口和波特率后点击“保存”。保存后请手动点击主界面的“连接”。</div>
+      <div class="dialog-actions">
+        <button id="cancelConnectBtn" class="secondary">取消</button>
+        <button id="applyConnectBtn" class="primary">保存</button>
+      </div>
+    </section>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "name": "ic9700-remote-io",
+  "outputfilename": "IC9700RemoteIO",
+  "frontend": {
+    "dir": ".",
+    "install": "",
+    "build": "npm run build",
+    "dev": "npm run dev"
+  }
+}

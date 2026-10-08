@@ -1,0 +1,71 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-release
+  cancel-in-progress: false
+
+jobs:
+  build-release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.x'
+          cache-dependency-path: go.sum
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Read version
+        id: version
+        shell: bash
+        run: |
+          VER="$(node -p "require('./wails.json').info.productVersion")"
+          echo "version=${VER}" >> "$GITHUB_OUTPUT"
+
+      - name: Install Wails CLI
+        shell: bash
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.2
+
+      - name: Test
+        shell: bash
+        run: go test ./...
+
+      - name: Build
+        shell: bash
+        run: |
+          export PATH="$PATH:$(go env GOPATH)/bin"
+          wails build
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
+          files: build/bin/IC9700RemoteIO.exe
+          generate_release_notes: true
+
+      - name: Bump patch version
+        shell: bash
+        run: |
+          node -e "const fs=require('fs');const p='wails.json';const j=JSON.parse(fs.readFileSync(p,'utf8'));const v=j.info.productVersion.split('.').map(Number);v[2]++;j.info.productVersion=v.join('.');fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');"
+          NEXT="$(node -p "require('./wails.json').info.productVersion")"
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add wails.json
+          git commit -m "chore: bump version to ${NEXT} [skip ci]"
+          git push

@@ -1,0 +1,156 @@
+html, body.sat-page {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  overflow: hidden;
+  background: #FFFFFF !important;
+}
+
+html[data-theme="dark"], html[data-theme="dark"] body.sat-page {
+  background: #0F1E25 !important;
+}
+
+.sat-page {
+  --sat-bg: #FFFFFF;
+  --sat-panel: #F7FCFE;
+  --sat-border: rgba(91, 206, 250, .24);
+  --sat-muted: #647680;
+  --sat-text: #22333B;
+  --sat-cyan: #5BCEFA;
+  --sat-pink: #F5A9B8;
+  width: 100%;
+  height: 100%;
+  color: var(--sat-text);
+  user-select: none;
+  -webkit-user-select: none;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(91,206,250,.10), transparent 30%),
+    radial-gradient(circle at 92% 0%, rgba(245,169,184,.09), transparent 28%),
+    var(--sat-bg);
+}
+
+html[data-theme="dark"] .sat-page {
+  --sat-bg: #0F1E25;
+  --sat-panel: #15252C;
+  --sat-border: rgba(91, 206, 250, .23);
+  --sat-muted: #A8C0CA;
+  --sat-text: #F7FDFF;
+}
+
+.sat-shell {
+  width: 100%;
+  height: 100%;
+  background: var(--sat-bg);
+  display: grid;
+  grid-template-rows: 82px 1fr;
+}
+
+.sat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 18px 12px 20px;
+  border-bottom: 1px solid var(--sat-border);
+  background: rgba(255,255,255,.82);
+}
+html[data-theme="dark"] .sat-header { background: rgba(15,30,37,.84); }
+
+.sat-heading { min-width: 0; }
+.sat-kicker { color: var(--sat-cyan); font-size: 11px; font-weight: 900; letter-spacing: .17em; }
+.sat-heading h1 { margin: 3px 0 0; font-size: 24px; line-height: 1.05; font-weight: 900; letter-spacing: -.03em; }
+
+.sat-header-actions { display: flex; align-items: center; gap: 8px; }
+.sat-state-pill {
+  min-width: 106px;
+  height: 36px;
+  padding: 0 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 20px;
+  border: 1px solid rgba(91,206,250,.48);
+  background: rgba(91,206,250,.10);
+  color: #1680A7;
+  font-size: 14px;
+  font-weight: 900;
+}
+.sat-state-pill.sat-on { border-color: rgba(245,169,184,.68); background: rgba(245,169,184,.13); color: #AD516C; }
+html[data-theme="dark"] .sat-state-pill { color: #BDF0FF; }
+html[data-theme="dark"] .sat-state-pill.sat-on { color: #FFC0CF; }
+
+.sat-topmost-btn {
+  min-width: 84px;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--sat-border);
+  background: var(--sat-panel);
+  color: var(--sat-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.sat-topmost-btn:hover { border-color: var(--sat-cyan); color: var(--sat-text); }
+.sat-topmost-btn.active { border-color: rgba(91,206,250,.72); background: rgba(91,206,250,.15); color: #1680A7; box-shadow: inset 0 0 0 1px rgba(91,206,250,.12); }
+.pin-icon { font-size: 15px; line-height: 1; }
+
+.sat-content {
+  min-height: 0;
+  overflow: auto;
+  padding: 10px 18px 12px;
+  display: grid;
+  grid-template-rows: auto auto auto auto;
+  gap: 8px;
+  background: transparent;
+}
+
+.sat-card { border: 1px solid var(--sat-border); border-radius: 13px; background: rgba(255,255,255,.82); box-shadow: 0 10px 26px rgba(42,79,94,.06); }
+html[data-theme="dark"] .sat-card { background: rgba(21,37,44,.91); box-shadow: 0 12px 28px rgba(0,0,0,.18); }
+
+.mode-card { min-height: 82px; display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 11px 17px; }
+.mode-info { min-width: 0; }
+.section-caption { color: var(--sat-muted); font-size: 11px; font-weight: 800; }
+.sat-mode-text { margin-top: 3px; font-size: 18px; line-height: 1.15; font-weight: 900; }
+
+.sat-toggle { min-width: 142px; height: 48px; border: 0; border-radius: 10px; background: var(--sat-cyan); color: #26404B; font-size: 20px; font-weight: 900; }
+.sat-toggle:hover:not(:disabled) { box-shadow: 0 6px 16px rgba(91,206,250,.18); }
+.sat-toggle:disabled { opacity: .42; }
+
+.vfo-card { padding: 12px 17px 13px; }
+.vfo-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.vfo-name { font-size: 19px; font-weight: 900; letter-spacing: -.02em; }
+.vfo-role { margin-top: 2px; color: var(--sat-muted); font-size: 10px; }
+.vfo-chip { min-width: 63px; height: 32px; padding: 0 14px; display: grid; place-items: center; border-radius: 17px; font-size: 11px; font-weight: 900; }
+.vfo-chip.rx { background: rgba(91,206,250,.15); color: #1680A7; }
+.vfo-chip.tx { background: rgba(245,169,184,.18); color: #AD516C; }
+html[data-theme="dark"] .vfo-chip.rx { color: #C2F3FF; }
+html[data-theme="dark"] .vfo-chip.tx { color: #FFC2D0; }
+
+.vfo-grid { margin-top: 10px; display: grid; grid-template-columns: 1.05fr .95fr; gap: 10px; }
+.field { display: grid; gap: 5px; min-width: 0; }
+.field > span { color: var(--sat-muted); font-size: 10px; font-weight: 800; }
+.field input, .field select { width: 100%; height: 38px; border-radius: 9px; border: 1px solid var(--sat-border); background: var(--sat-bg); color: var(--sat-text); padding: 0 11px; outline: none; font-size: 15px; }
+.field input:focus, .field select:focus { border-color: var(--sat-cyan); box-shadow: 0 0 0 3px rgba(91,206,250,.11); }
+.field input:disabled, .field select:disabled { color: #A5AFB6; background: #F0F4F6; opacity: 1; }
+html[data-theme="dark"] .field input:disabled, html[data-theme="dark"] .field select:disabled { color: #69757D; background: #151D23; }
+
+.message { min-height: 38px; display: flex; align-items: center; padding: 7px 11px; border-radius: 9px; border: 1px solid var(--sat-border); background: var(--sat-panel); color: var(--sat-muted); font-size: 11px; }
+.message.ok { border-color: rgba(91,206,250,.45); color: #1680A7; }
+.message.error { border-color: rgba(245,169,184,.65); color: #A84861; }
+
+@media (max-height: 560px) {
+  .sat-shell { grid-template-rows: 70px 1fr; }
+  .sat-header { padding: 10px 14px; }
+  .sat-heading h1 { font-size: 21px; }
+  .sat-state-pill { height: 34px; min-width: 88px; }
+  .sat-topmost-btn { height: 36px; }
+  .sat-content { padding: 8px 14px 10px; gap: 6px; }
+  .mode-card { min-height: 70px; }
+  .vfo-card { padding: 9px 14px; }
+  .field input, .field select { height: 35px; }
+}

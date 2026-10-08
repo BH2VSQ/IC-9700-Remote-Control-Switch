@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="day">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>IC-9700 SAT</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="sat.css" />
+</head>
+<body class="sat-page">
+  <div class="sat-shell">
+    <header class="sat-header">
+      <div class="sat-heading">
+        <div class="sat-kicker">SATELLITE CONTROL</div>
+        <h1>卫星控制</h1>
+      </div>
+      <div class="sat-header-actions">
+        <div id="satState" class="sat-state-pill">OFF</div>
+        <button id="topmostBtn" class="sat-topmost-btn" aria-label="窗口置顶" aria-pressed="false"><span class="pin-icon">⌖</span><span>置顶</span></button>
+      </div>
+    </header>
+
+    <main class="sat-content">
+      <section class="sat-card mode-card">
+        <div class="mode-info">
+          <div class="section-caption">卫星模式</div>
+          <div id="satModeText" class="sat-mode-text">未连接</div>
+        </div>
+        <button id="satToggleBtn" class="sat-toggle" disabled>开启</button>
+      </section>
+
+      <section class="sat-card vfo-card">
+        <div class="vfo-head">
+          <div>
+            <div class="vfo-name">RX VFO</div>
+            <div class="vfo-role">D0 · 下行 / 接收</div>
+          </div>
+          <span class="vfo-chip rx">RX</span>
+        </div>
+        <div class="vfo-grid">
+          <label class="field">
+            <span>频率 MHz</span>
+            <input id="rxFreqInput" type="number" min="1" max="1499" step="0.000001" inputmode="decimal" placeholder="435.800000" />
+          </label>
+          <label class="field">
+            <span>模式</span>
+            <select id="rxModeSelect"></select>
+          </label>
+        </div>
+      </section>
+
+      <section class="sat-card vfo-card">
+        <div class="vfo-head">
+          <div>
+            <div class="vfo-name">TX VFO</div>
+            <div class="vfo-role">D1 · 上行 / 发射</div>
+          </div>
+          <span class="vfo-chip tx">TX</span>
+        </div>
+        <div class="vfo-grid">
+          <label class="field">
+            <span>频率 MHz</span>
+            <input id="txFreqInput" type="number" min="1" max="1499" step="0.000001" inputmode="decimal" placeholder="145.900000" />
+          </label>
+          <label class="field">
+            <span>模式</span>
+            <select id="txModeSelect"></select>
+          </label>
+        </div>
+      </section>
+
+      <div id="satMessage" class="message">连接电台后读取卫星状态。</div>
+    </main>
+  </div>
+  <script type="module" src="sat.js"></script>
+</body>
+</html>

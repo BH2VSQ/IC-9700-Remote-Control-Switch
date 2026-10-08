@@ -1,0 +1,16 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "ic9700-remote-io",
+  "outputfilename": "IC9700RemoteIO",
+  "info": {
+    "companyName": "BH2VSQ",
+    "productName": "IC-9700 Remote IO",
+    "productVersion": "1.0.0",
+    "copyright": "Copyright (c) 2026 BH2VSQ",
+    "comments": "IC-9700 Remote Audio Control via CI-V"
+  },
+  "frontend:dir": "frontend",
+  "frontend:install": "",
+  "frontend:build": "npm run build",
+  "frontend:dev": "npm run dev"
+}
