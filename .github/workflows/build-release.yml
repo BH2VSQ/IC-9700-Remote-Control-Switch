@@ -49,7 +49,7 @@ jobs:
         shell: bash
         run: |
           export PATH="$PATH:$(go env GOPATH)/bin"
-          wails build
+          wails build -ldflags "-X ic9700-remote-io/internal/app.Version=${{ steps.version.outputs.version }}"
 
       - name: Create Release
         uses: softprops/action-gh-release@v2

@@ -104,3 +104,11 @@ func (a *App) SetSatelliteOperatingMode(side string, mode string) error {
 func (a *App) OpenSatelliteWindow(theme string) error {
 	return a.backend.OpenSatelliteWindow(theme)
 }
+
+func (a *App) CheckForUpdates() (backend.UpdateInfo, error) {
+	return a.backend.CheckForUpdates()
+}
+
+func (a *App) DownloadAndInstall() error {
+	return a.backend.DownloadAndInstall()
+}

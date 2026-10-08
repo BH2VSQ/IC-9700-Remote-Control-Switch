@@ -13,6 +13,8 @@ import {
   SetCompLevel,
   SetCWKeyingSpeed,
   SetRFPower,
+  CheckForUpdates,
+  DownloadAndInstall,
   Exit,
   OpenSatelliteWindow,
 } from './wailsjs/go/main/App.js';
@@ -429,6 +431,31 @@ $('satMenuBtn').onclick = async () => {
 
 $('themeBtn').onclick = () => {
   applyTheme(document.documentElement.dataset.theme === 'day' ? 'dark' : 'day');
+};
+
+$('updateBtn').onclick = async () => {
+  const btn = $('updateBtn');
+  if (btn.disabled) return;
+  btn.disabled = true;
+  const original = btn.textContent;
+  try {
+    btn.textContent = '检查中…';
+    const info = await CheckForUpdates();
+    if (!info.hasUpdate) {
+      showMessage(`已是最新版本 v${info.currentVersion}`, 'ok');
+      return;
+    }
+    btn.textContent = '更新中…';
+    showMessage(`发现新版本 v${info.latestVersion}，正在下载更新…`);
+    await DownloadAndInstall();
+    showMessage('更新已下载，正在重启应用…', 'ok');
+  } catch (err) {
+    console.error(err);
+    showMessage(`检查更新失败：${err?.message || err}`, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = original;
+  }
 };
 
 makeChoiceButtons('dataOffButtons', SetDataOffInput);

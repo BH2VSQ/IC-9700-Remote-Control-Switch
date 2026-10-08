@@ -53,7 +53,7 @@ button, select, input { font: inherit; }
 input, select, textarea { user-select: text; -webkit-user-select: text; }
 #lastTX, #lastRX { user-select: text; -webkit-user-select: text; cursor: text; }
 button { cursor: pointer; }
-button:disabled, input:disabled, select:disabled { opacity: .45; cursor: not-allowed; }
+button:disabled, input:disabled, select:disabled { opacity: .45; cursor: default; }
 
 .app-shell { max-width: 1120px; margin: 0 auto; padding: 12px 20px 12px; }
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -81,6 +81,7 @@ h1 { margin: 1px 0 0; font-size: 20px; letter-spacing: -.02em; }
 }
 .menu-btn:hover { border-color: var(--cyan); box-shadow: 0 6px 16px rgba(91, 206, 250, .11); }
 .menu-btn.sat { border-color: rgba(91, 206, 250, .45); color: #1583ac; }
+.menu-btn.update { color: #1583ac; }
 .menu-btn.theme { min-width: 38px; padding: 0; }
 .menu-btn.danger:hover { border-color: rgba(245, 169, 184, .78); color: var(--danger); }
 
@@ -299,6 +300,7 @@ html[data-theme="dark"] .step-btn { background: rgba(255,255,255,.04); }
 .slider-wheel-zone { margin-top: 4px; padding: 2px 1px 1px; border-radius: 7px; }
 .slider-wheel-zone:has(input:not(:disabled)):hover { background: rgba(91,206,250,.06); }
 input[type="range"] { appearance: none; -webkit-appearance: none; width: 100%; min-height: 15px; height: 15px; padding: 0; border: 0; outline: 0; background: transparent; box-shadow: none; cursor: pointer; }
+input[type="range"]:disabled { cursor: default; }
 input[type="range"]::-webkit-slider-runnable-track { height: 5px; border-radius: 999px; background: var(--line); }
 input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 15px; height: 15px; margin-top: -5px; border-radius: 50%; border: 2px solid var(--panel); background: var(--cyan); box-shadow: 0 2px 5px rgba(39,54,66,.16); }
 input[type="range"]::-moz-range-track { height: 5px; border: 0; border-radius: 999px; background: var(--line); }
