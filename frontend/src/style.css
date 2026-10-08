@@ -151,7 +151,7 @@ html[data-theme="dark"] .state-pill.known { color: #b7efff; }
   font-size: 10px;
   font-weight: 750;
 }
-.choice-btn:hover { border-color: var(--cyan); color: var(--text); }
+.choice-btn:hover:not(:disabled) { border-color: var(--cyan); color: var(--text); }
 .choice-btn.selected { border-color: var(--cyan); background: var(--cyan-soft); color: #167ca1; box-shadow: inset 0 0 0 1px rgba(91,206,250,.08); }
 html[data-theme="dark"] .choice-btn.selected { color: #c0f2ff; }
 .quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 4px; }
@@ -165,7 +165,7 @@ html[data-theme="dark"] .choice-btn.selected { color: #c0f2ff; }
 .primary { background: var(--cyan); border-color: var(--cyan); color: #173441; }
 .primary:hover { box-shadow: 0 5px 14px rgba(91,206,250,.22); }
 .secondary { background: var(--soft); color: var(--text); }
-.secondary:hover { border-color: var(--cyan); box-shadow: 0 5px 14px rgba(91,206,250,.10); }
+.secondary:hover:not(:disabled) { border-color: var(--cyan); box-shadow: 0 5px 14px rgba(91,206,250,.10); }
 .secondary.small { min-height: 24px; height: 24px; padding: 0 9px; border-radius: 7px; font-size: 9px; }
 .compact { min-height: 29px; padding: 0 10px; }
 .lan-action, .usb-action { font-weight: 900; }
@@ -192,7 +192,7 @@ html[data-theme="dark"] .choice-btn.selected { color: #c0f2ff; }
   place-content: center;
   gap: 6px;
 }
-.output-btn:hover { border-color: var(--cyan); }
+.output-btn:hover:not(:disabled) { border-color: var(--cyan); }
 .output-btn.selected {
   border-color: var(--cyan);
   background: linear-gradient(180deg, rgba(91,206,250,.17), rgba(245,169,184,.07));
@@ -297,7 +297,7 @@ html[data-theme="dark"] .step-btn { background: rgba(255,255,255,.04); }
 .level-value.known { color: var(--text); }
 .assist-note { margin-top: 4px; color: var(--muted); font-size: 8px; line-height: 1.2; }
 .slider-wheel-zone { margin-top: 4px; padding: 2px 1px 1px; border-radius: 7px; }
-.slider-wheel-zone:hover { background: rgba(91,206,250,.06); }
+.slider-wheel-zone:has(input:not(:disabled)):hover { background: rgba(91,206,250,.06); }
 input[type="range"] { appearance: none; -webkit-appearance: none; width: 100%; min-height: 15px; height: 15px; padding: 0; border: 0; outline: 0; background: transparent; box-shadow: none; cursor: pointer; }
 input[type="range"]::-webkit-slider-runnable-track { height: 5px; border-radius: 999px; background: var(--line); }
 input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 15px; height: 15px; margin-top: -5px; border-radius: 50%; border: 2px solid var(--panel); background: var(--cyan); box-shadow: 0 2px 5px rgba(39,54,66,.16); }

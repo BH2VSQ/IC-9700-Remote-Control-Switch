@@ -241,7 +241,7 @@ async function refresh() {
       lastSatelliteMode = null;
     }
 
-    for (const button of document.querySelectorAll('.choice-btn, .output-btn')) {
+    for (const button of document.querySelectorAll('.choice-btn, .output-btn, .wide-action')) {
       button.disabled = !status.connected;
     }
     $('refreshState').disabled = !status.connected;
