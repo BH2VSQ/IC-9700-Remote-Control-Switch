@@ -2,11 +2,13 @@ package civ
 
 import (
 	"bytes"
+	"bufio"
 	"context"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"math"
+	"net"
 	"strings"
 	"sync"
 	"time"
@@ -160,6 +162,9 @@ func FormatFrame(data []byte) string {
 type Client struct {
 	mu          sync.Mutex
 	port        serial.Port
+	skycatConn  net.Conn
+	skycatReader *bufio.Reader
+	skycatAddr  string
 	portName    string
 	baud        int
 	readTimeout time.Duration
@@ -186,12 +191,13 @@ func ListPorts() ([]string, error) {
 func (c *Client) Connected() bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return c.port != nil
+	return c.port != nil || c.skycatConn != nil
 }
 
 func (c *Client) PortName() string {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if c.skycatConn != nil { return "SkyCAT " + c.skycatAddr }
 	return c.portName
 }
 
@@ -202,6 +208,12 @@ func (c *Client) Connect(portName string, baud int) error {
 	if c.port != nil {
 		_ = c.port.Close()
 		c.port = nil
+	}
+	if c.skycatConn != nil {
+		_ = c.skycatConn.Close()
+		c.skycatConn = nil
+		c.skycatReader = nil
+		c.skycatAddr = ""
 	}
 
 	if portName == "" {
@@ -242,9 +254,15 @@ func (c *Client) Connect(portName string, baud int) error {
 func (c *Client) Disconnect() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.port == nil {
-		return nil
+	if c.skycatConn != nil {
+		err := c.skycatConn.Close()
+		c.skycatConn = nil
+		c.skycatReader = nil
+		c.skycatAddr = ""
+		c.portName = ""
+		return err
 	}
+	if c.port == nil { return nil }
 	err := c.port.Close()
 	c.port = nil
 	c.portName = ""
@@ -261,6 +279,7 @@ func (c *Client) sendRead(ctx context.Context, cmd ...byte) ([]byte, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	if c.skycatConn != nil { return c.skycatReadLocked(ctx, cmd...) }
 	if c.port == nil {
 		return nil, errors.New("not connected")
 	}
@@ -314,6 +333,7 @@ func (c *Client) sendSet(ctx context.Context, cmd ...byte) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	if c.skycatConn != nil { return c.skycatWriteLocked(ctx, cmd...) }
 	if c.port == nil {
 		return errors.New("not connected")
 	}
