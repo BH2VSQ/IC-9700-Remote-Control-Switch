@@ -55,7 +55,7 @@ func TestSkyCATConnectionUsesDedicatedProtocolAndPreservesCivDecoders(t *testing
       mu.Unlock()
       response := "ERR INVALID"
       switch request {
-      case "GET SAT_MODE": response = "VALUE 00"
+      case "PING": response = "PONG"
       case "GET DATA_OFF": response = "VALUE 05"
       case "SET USB_OUTPUT 01": response = "OK"
       case "GET RF_POWER": response = "VALUE 0128"
@@ -80,7 +80,7 @@ func TestSkyCATConnectionUsesDedicatedProtocolAndPreservesCivDecoders(t *testing
   wg.Wait()
   mu.Lock()
   defer mu.Unlock()
-  expected := []string{"GET SAT_MODE", "GET DATA_OFF", "SET USB_OUTPUT 01", "GET RF_POWER"}
+  expected := []string{"PING", "GET DATA_OFF", "SET USB_OUTPUT 01", "GET RF_POWER"}
   if strings.Join(requests, "|") != strings.Join(expected, "|") {
     t.Fatalf("requests: %v, expected %v", requests, expected)
   }
