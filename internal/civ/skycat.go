@@ -86,28 +86,43 @@ func (c *Client) ConnectSkyCAT(addr string) error {
 	c.lastTX, c.lastRX = nil, nil
 	// Confirm that this is the restricted Switch API, not the ordinary CAT
 	// 4532 listener (which could otherwise appear successfully connected).
-	reply, err := c.skycatRequestLocked(context.Background(), "GET SAT_MODE")
-	if err != nil || !strings.HasPrefix(reply, "VALUE ") {
+	reply, err := c.skycatRequestLocked(context.Background(), "PING")
+	if err != nil || reply != "PONG" {
 		_ = conn.Close()
 		c.skycatConn = nil
 		c.skycatReader = nil
 		c.skycatAddr = ""
-		return fmt.Errorf("SkyCAT auxiliary protocol handshake failed: %v", err)
+		return fmt.Errorf("SkyCAT auxiliary protocol handshake failed (expected PONG, got %q): %v", reply, err)
 	}
 	return nil
 }
 
+func (c *Client) closeSkyCATLocked() {
+	if c.skycatConn != nil { _ = c.skycatConn.Close() }
+	c.skycatConn = nil
+	c.skycatReader = nil
+	c.skycatAddr = ""
+}
+
 func (c *Client) skycatRequestLocked(ctx context.Context, request string) (string, error) {
 	if c.skycatConn == nil { return "", errors.New("SkyCAT not connected") }
-	deadline := time.Now().Add(1500*time.Millisecond)
+	// SkyCAT may be waiting behind Doppler/CAT commands before a 1.5s
+	// radio query begins. Do not time out earlier than the server itself.
+	deadline := time.Now().Add(3500*time.Millisecond)
 	if d, ok := ctx.Deadline(); ok && d.Before(deadline) { deadline = d }
 	if err := c.skycatConn.SetDeadline(deadline); err != nil { return "", err }
 	defer c.skycatConn.SetDeadline(time.Time{})
 	if _, err := c.skycatConn.Write([]byte(request + "\n")); err != nil {
+		c.closeSkyCATLocked()
 		return "", fmt.Errorf("SkyCAT write: %w", err)
 	}
 	response, err := c.skycatReader.ReadString('\n')
-	if err != nil { return "", fmt.Errorf("SkyCAT response: %w", err) }
+	if err != nil {
+		// After a timeout the reply might arrive during the NEXT command.
+		// Never reuse this stream: that could apply stale state to the UI.
+		c.closeSkyCATLocked()
+		return "", fmt.Errorf("SkyCAT response: %w (connection reset to avoid stale replies)", err)
+	}
 	response = strings.TrimSpace(response)
 	if strings.HasPrefix(response, "ERR ") { return "", fmt.Errorf("SkyCAT: %s", response) }
 	return response, nil
