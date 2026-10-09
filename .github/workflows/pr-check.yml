@@ -1,0 +1,41 @@
+name: Pull Request Validation
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.x'
+          cache-dependency-path: go.sum
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Frontend connection validation tests
+        run: node --test frontend/test/connection-settings.test.mjs
+      - name: Go unit tests
+        run: go test ./internal/...
+      - name: Go vet
+        run: go vet ./internal/...
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.2
+      - name: Build Windows application (without release)
+        shell: bash
+        run: |
+          export PATH="$PATH:$(go env GOPATH)/bin"
+          wails build
+      - name: Upload unsigned test binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: IC9700-Remote-IO-SkyCAT-test-win-x64
+          path: build/bin/IC9700RemoteIO.exe
+          if-no-files-found: error

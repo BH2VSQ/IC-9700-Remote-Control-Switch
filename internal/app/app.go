@@ -34,6 +34,7 @@ type SatelliteStatus struct {
 type Status struct {
 	Connected          bool   `json:"connected"`
 	Port               string `json:"port"`
+	Transport          string `json:"transport"`
 	DataOffInput       string `json:"dataOffInput"`
 	DataInput          string `json:"dataInput"`
 	USBOutput          string `json:"usbOutput"`
@@ -99,6 +100,14 @@ func (a *App) Connect(port string, baud int) error {
 	return nil
 }
 
+func (a *App) ConnectSkyCAT(address string) error {
+	a.opMu.Lock()
+	defer a.opMu.Unlock()
+	if err := a.civ.ConnectSkyCAT(address); err != nil { return err }
+	a.invalidateSatelliteCache()
+	return nil
+}
+
 func (a *App) Disconnect() error {
 	a.opMu.Lock()
 	defer a.opMu.Unlock()
@@ -116,6 +125,7 @@ func (a *App) RefreshStatus() Status {
 		Connected: a.civ.Connected(),
 		Port:      a.civ.PortName(),
 	}
+	if a.civ.IsSkyCAT() { status.Transport = "skycat" } else { status.Transport = "serial" }
 	if !status.Connected {
 		status.Error = "Not connected"
 		status.LastTX, status.LastRX = a.civ.LastFrames()
@@ -146,19 +156,21 @@ func (a *App) RefreshStatus() Status {
 		}
 	}
 
-	// Satellite mode changes the active VFO/context used by subsequent CI-V
-	// controls. Read it as the final lightweight status query so the frontend
-	// can detect SAT entry/exit without allowing a SAT-mode read error to block
-	// the normal DATA/USB status fields above.
-	if v, err := a.civ.GetSatelliteMode(ctx); err != nil {
-		if status.Error == "" {
-			status.Error = err.Error()
+	// The SAT window is intentionally disabled on the dedicated SkyCAT port.
+	// Do not waste a fourth CI-V read every 5 seconds for a value that the
+	// auxiliary UI cannot act on; leave VFO/SAT ownership with SkyRoof.
+	if !a.civ.IsSkyCAT() {
+		if v, err := a.civ.GetSatelliteMode(ctx); err != nil {
+			if status.Error == "" { status.Error = err.Error() }
+		} else {
+			status.SatelliteMode = v
+			status.SatelliteModeKnown = true
 		}
-	} else {
-		status.SatelliteMode = v
-		status.SatelliteModeKnown = true
 	}
 
+	// A timeout closes the auxiliary TCP stream to prevent stale replies
+	// contaminating the next CI-V read. Reflect that disconnect immediately.
+	status.Connected = a.civ.Connected()
 	status.LastTX, status.LastRX = a.civ.LastFrames()
 	return status
 }
@@ -350,6 +362,9 @@ func (a *App) GetSatelliteStatus() (SatelliteStatus, error) {
 
 func (a *App) readSatelliteStateLocked(ctx context.Context) (SatelliteStatus, error) {
 	var status SatelliteStatus
+	if a.civ.IsSkyCAT() {
+		return status, fmt.Errorf("SkyCAT auxiliary connection is read-only for satellite state; SkyRoof owns VFO selection")
+	}
 	if !a.civ.Connected() {
 		return status, fmt.Errorf("not connected")
 	}
@@ -404,6 +419,7 @@ func (a *App) readSatelliteStateLocked(ctx context.Context) (SatelliteStatus, er
 func (a *App) SetSatelliteMode(enabled bool) error {
 	a.opMu.Lock()
 	defer a.opMu.Unlock()
+	if a.civ.IsSkyCAT() { return fmt.Errorf("SkyCAT auxiliary port prohibits satellite mode changes; use SkyRoof") }
 
 	ctx := a.civContext()
 	if !a.civ.Connected() {
@@ -428,6 +444,7 @@ func (a *App) SetSatelliteMode(enabled bool) error {
 func (a *App) SetSatelliteFrequency(side string, hz uint64) error {
 	a.opMu.Lock()
 	defer a.opMu.Unlock()
+	if a.civ.IsSkyCAT() { return fmt.Errorf("SkyCAT auxiliary port prohibits frequency changes; use SkyRoof") }
 
 	ctx := a.civContext()
 	if !a.civ.Connected() {
@@ -457,6 +474,7 @@ func (a *App) SetSatelliteFrequency(side string, hz uint64) error {
 func (a *App) SetSatelliteOperatingMode(side string, mode string) error {
 	a.opMu.Lock()
 	defer a.opMu.Unlock()
+	if a.civ.IsSkyCAT() { return fmt.Errorf("SkyCAT auxiliary port prohibits mode changes; use SkyRoof") }
 
 	ctx := a.civContext()
 	if !a.civ.Connected() {
@@ -485,6 +503,7 @@ func (a *App) SetSatelliteOperatingMode(side string, mode string) error {
 }
 
 func (a *App) OpenSatelliteWindow(theme string) error {
+	if a.civ.IsSkyCAT() { return fmt.Errorf("Satellite controls remain in SkyRoof when using SkyCAT TCP") }
 	return a.satellite.Start(a, theme)
 }
 

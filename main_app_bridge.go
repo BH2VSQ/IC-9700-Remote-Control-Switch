@@ -33,6 +33,10 @@ func (a *App) Connect(port string, baud int) error {
 	return a.backend.Connect(port, baud)
 }
 
+func (a *App) ConnectSkyCAT(address string) error {
+  return a.backend.ConnectSkyCAT(address)
+}
+
 func (a *App) Disconnect() error {
 	return a.backend.Disconnect()
 }
