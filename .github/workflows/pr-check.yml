@@ -20,6 +20,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Frontend connection validation tests
+        run: node --test frontend/test/connection-settings.test.mjs
       - name: Go unit tests
         run: go test ./internal/...
       - name: Go vet

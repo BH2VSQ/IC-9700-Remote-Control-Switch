@@ -20,6 +20,12 @@ import {
   OpenSatelliteWindow,
 } from './wailsjs/go/main/App.js';
 
+import {
+  DEFAULT_SKYCAT_ADDRESS,
+  isValidSkyCATAddress,
+  upgradeConnectionConfig,
+} from './connection-settings.mjs';
+
 const INPUTS = ['MIC', 'ACC', 'MIC + ACC', 'USB', 'MIC + USB', 'LAN'];
 const STORAGE_KEY = 'ic9700-remote-io-connection';
 const THEME_KEY = 'ic9700-remote-io-theme';
@@ -27,6 +33,8 @@ let refreshingMain = false;
 let refreshingAssist = false;
 let assistState = null;
 let lastSatelliteMode = null;
+let connectedInUI = false;
+let connectActionBusy = false;
 
 const $ = (id) => document.getElementById(id);
 
@@ -43,12 +51,13 @@ function showSatMessage(text, kind = '') {
 }
 
 function setConnectionUI(connected, port = '', saved = null) {
+  connectedInUI = !!connected;
   $('connectionLamp').className = `lamp ${connected ? 'online' : 'offline'}`;
   $('connectionText').textContent = connected ? '已连接' : '未连接';
   $('connectionDetail').textContent = connected
     ? `${port} · CI-V`
     : saved?.transport === 'skycat'
-      ? `SkyCAT ${saved.address || '127.0.0.1:4536'} · 已保存`
+      ? `SkyCAT ${saved.address || DEFAULT_SKYCAT_ADDRESS} · 已保存`
       : saved?.port ? `${saved.port} · ${saved.baud} bps · 已保存` : '未配置端口';
   $('mainConnectBtn').textContent = connected ? '断开连接' : '连接';
 }
@@ -95,14 +104,20 @@ async function perform(action, label) {
 }
 
 function getSavedConnection() {
+  let saved;
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+    saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
   } catch {
     return null;
   }
+  const upgraded = upgradeConnectionConfig(saved);
+  if (upgraded !== saved) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(upgraded)); } catch {}
+  }
+  return upgraded;
 }
 
-function saveConnection(port, baud, transport = 'serial', address = '127.0.0.1:4536') {
+function saveConnection(port, baud, transport = 'serial', address = DEFAULT_SKYCAT_ADDRESS) {
   const config = { port, baud, transport, address };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
   return config;
@@ -139,13 +154,18 @@ function openConnectDialog(message = '') {
   const saved = getSavedConnection();
   $('connectOverlay').classList.remove('hidden');
   $('transportSelect').value = saved?.transport === 'skycat' ? 'skycat' : 'serial';
-  $('skycatAddress').value = saved?.address || '127.0.0.1:4536';
+  $('skycatAddress').value = saved?.address || DEFAULT_SKYCAT_ADDRESS;
   $('baudSelect').value = String(saved?.baud || 115200);
   updateTransportFields();
   $('connectDialogMessage').textContent = message || '选择端口和波特率后点击“保存”。保存后请手动点击主界面的“连接”。';
-  refreshPorts(saved?.port).catch((err) => {
-    $('connectDialogMessage').textContent = `串口扫描失败：${err?.message || err}`;
-  });
+  // RS-BA1 virtual COM enumeration can take time; do not enumerate serial
+  // ports merely because the SkyCAT TCP dialog was opened.
+  if ($('transportSelect').value === 'serial') {
+    refreshPorts(saved?.port).catch((err) => {
+      if ($('transportSelect').value === 'serial')
+        $('connectDialogMessage').textContent = `串口扫描失败：${err?.message || err}`;
+    });
+  }
 }
 
 function closeConnectDialog() {
@@ -161,10 +181,16 @@ async function attemptConnectFromSaved() {
   try {
     const isSkyCAT = saved.transport === 'skycat';
     showMessage(`正在连接 ${isSkyCAT ? saved.address : saved.port}…`);
-    if (isSkyCAT) await ConnectSkyCAT(saved.address || '127.0.0.1:4536');
+    if (isSkyCAT) await ConnectSkyCAT(saved.address || DEFAULT_SKYCAT_ADDRESS);
     else await Connect(saved.port, Number(saved.baud || 115200));
-    await refreshAll();
-    showMessage('连接成功，已读取电台当前设置', 'ok');
+    // Connection success should not wait on serial CI-V queries.
+    setConnectionUI(true, isSkyCAT ? `SkyCAT ${saved.address || DEFAULT_SKYCAT_ADDRESS}` : saved.port, saved);
+    showMessage('连接成功，正在读取电台设置…', 'ok');
+    void refreshAll().then(() => {
+      showMessage('电台状态读取完成', 'ok');
+    }).catch(err => {
+      showMessage(`读取电台状态失败：${err?.message || err}`, 'error');
+    });
     return true;
   } catch (err) {
     showMessage(`连接失败：${err?.message || err}`, 'error');
@@ -339,7 +365,15 @@ $('cancelConnectBtn').onclick = closeConnectDialog;
 $('connectOverlay').addEventListener('click', (event) => {
   if (event.target === $('connectOverlay')) closeConnectDialog();
 });
-$('transportSelect').onchange = updateTransportFields;
+$('transportSelect').onchange = () => {
+  updateTransportFields();
+  if ($('transportSelect').value === 'serial') {
+    refreshPorts($('portSelect').value).catch((err) => {
+      if ($('transportSelect').value === 'serial')
+        $('connectDialogMessage').textContent = `串口扫描失败：${err?.message || err}`;
+    });
+  }
+};
 $('refreshPorts').onclick = () => refreshPorts($('portSelect').value).catch((err) => {
   $('connectDialogMessage').textContent = `串口扫描失败：${err?.message || err}`;
 });
@@ -347,41 +381,55 @@ $('applyConnectBtn').onclick = async () => {
   const port = $('portSelect').value;
   const baud = Number($('baudSelect').value);
   const transport = $('transportSelect').value;
-  const address = $('skycatAddress').value.trim() || '127.0.0.1:4536';
+  const address = $('skycatAddress').value.trim() || DEFAULT_SKYCAT_ADDRESS;
   if (transport === 'serial' && !port) {
     $('connectDialogMessage').textContent = '请先选择有效串口。';
     return;
   }
-  if (transport === 'skycat' && !/^(localhost|127\\.0\\.0\\.1|\\[::1\\]):[0-9]{1,5}$/i.test(address)) {
-    $('connectDialogMessage').textContent = '请输入本地 SkyCAT 地址，如 127.0.0.1:4536。';
+  if (transport === 'skycat' && !isValidSkyCATAddress(address)) {
+    $('connectDialogMessage').textContent = '请输入有效的本机 SkyCAT 地址，如 127.0.0.1:4537。';
     return;
   }
   try {
     $('applyConnectBtn').disabled = true;
     $('connectDialogMessage').textContent = '正在保存连接设置…';
-    saveConnection(port, baud, transport, address);
+    const saved = saveConnection(port, baud, transport, address);
     closeConnectDialog();
-    await refresh();
+    // Saving config is a local operation; never await radio readback here.
     showMessage(transport === 'skycat'
       ? `已保存 SkyCAT 独立端口 ${address}，请手动点击“连接”`
       : `端口配置已保存：${port} · ${baud} bps，请手动点击“连接”`, 'ok');
+    if (!$('connectionLamp').classList.contains('online'))
+      setConnectionUI(false, '', saved);
+  } catch (err) {
+    $('connectDialogMessage').textContent = `无法保存设置：${err?.message || err}`;
   } finally {
     $('applyConnectBtn').disabled = false;
   }
 };
 
 $('mainConnectBtn').onclick = async () => {
-  const status = await RefreshStatus();
-  if (status.connected) {
-    await perform(async () => {
+  // A status request may be waiting for the radio; pressing Connect must
+  // never wait on a redundant RefreshStatus before beginning the action.
+  if (connectActionBusy) return;
+  connectActionBusy = true;
+  $('mainConnectBtn').disabled = true;
+  try {
+    if (connectedInUI) {
       await Disconnect();
+      setConnectionUI(false, '', getSavedConnection());
       assistState = null;
-      await refresh();
       setAssistState(null);
-    }, '断开连接');
-    return;
+      showMessage('已断开连接', 'ok');
+    } else {
+      await attemptConnectFromSaved();
+    }
+  } catch (err) {
+    showMessage(`连接操作失败：${err?.message || err}`, 'error');
+  } finally {
+    connectActionBusy = false;
+    $('mainConnectBtn').disabled = false;
   }
-  await attemptConnectFromSaved();
 };
 
 $('refreshState').onclick = () => perform(refreshAll, '读取状态');
@@ -488,8 +536,10 @@ makeChoiceButtons('dataOffButtons', SetDataOffInput);
 makeChoiceButtons('dataButtons', SetDataInput);
 applyTheme(localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'day');
 
-await refreshPorts(getSavedConnection()?.port).catch(() => {});
-await refresh();
+const savedOnStartup = getSavedConnection();
+if (savedOnStartup?.transport !== 'skycat')
+  void refreshPorts(savedOnStartup?.port).catch(() => {});
+void refresh().catch(() => {});
 // Connection is always a manual action. Auxiliary settings are read immediately
 // after a successful connection or explicit full-state refresh, not by auto-connect.
 setInterval(() => refresh().catch(() => {}), 5000);

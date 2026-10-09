@@ -8,6 +8,7 @@ import (
   "strings"
   "sync"
   "testing"
+  "time"
 )
 
 func TestSkyCATSelectorAllowlist(t *testing.T) {
@@ -55,7 +56,7 @@ func TestSkyCATConnectionUsesDedicatedProtocolAndPreservesCivDecoders(t *testing
       mu.Unlock()
       response := "ERR INVALID"
       switch request {
-      case "GET SAT_MODE": response = "VALUE 00"
+      case "PING": response = "PONG"
       case "GET DATA_OFF": response = "VALUE 05"
       case "SET USB_OUTPUT 01": response = "OK"
       case "GET RF_POWER": response = "VALUE 0128"
@@ -80,7 +81,7 @@ func TestSkyCATConnectionUsesDedicatedProtocolAndPreservesCivDecoders(t *testing
   wg.Wait()
   mu.Lock()
   defer mu.Unlock()
-  expected := []string{"GET SAT_MODE", "GET DATA_OFF", "SET USB_OUTPUT 01", "GET RF_POWER"}
+  expected := []string{"PING", "GET DATA_OFF", "SET USB_OUTPUT 01", "GET RF_POWER"}
   if strings.Join(requests, "|") != strings.Join(expected, "|") {
     t.Fatalf("requests: %v, expected %v", requests, expected)
   }
@@ -88,7 +89,31 @@ func TestSkyCATConnectionUsesDedicatedProtocolAndPreservesCivDecoders(t *testing
 
 func TestSkyCATRejectsRemoteEndpoint(t *testing.T) {
   c := NewClient()
-  if err := c.ConnectSkyCAT("8.8.8.8:4536"); err == nil {
+  if err := c.ConnectSkyCAT("8.8.8.8:4537"); err == nil {
     t.Fatal("non-loopback endpoint must be rejected")
+  }
+}
+
+func TestSkyCATTimeoutClosesTransportToAvoidStaleReplies(t *testing.T) {
+  client, server := net.Pipe()
+  defer server.Close()
+  c := NewClient()
+  c.skycatConn = client
+  c.skycatReader = bufio.NewReader(client)
+  c.skycatAddr = "127.0.0.1:4537"
+
+  go func() {
+    _, _ = bufio.NewReader(server).ReadString('\n')
+    // The radio would return a reply too late for the original request.
+    time.Sleep(120 * time.Millisecond)
+    _, _ = server.Write([]byte("VALUE 05\n"))
+  }()
+  ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
+  defer cancel()
+  if _, err := c.skycatRequestLocked(ctx, "GET DATA_OFF"); err == nil {
+    t.Fatal("expected timeout")
+  }
+  if c.Connected() || c.skycatReader != nil {
+    t.Fatal("timed-out socket must not be reused for another CI-V query")
   }
 }
