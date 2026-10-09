@@ -50,3 +50,29 @@ wails build
 ### SAT 独立窗口
 
 顶部 **SAT** 会启动一个真正独立的顶层窗口，可自由拖出主窗口范围，并与主窗口同时操作。由于当前工程采用 Wails v2，SAT 窗口由同一 EXE 启动第二个窗口实例；串口/CI-V 始终只由主实例持有，SAT 实例通过带随机令牌的 `127.0.0.1` 本机 RPC 请求主实例执行卫星控制，从而避免两个进程同时打开同一个串口。关闭主窗口时 SAT 窗口及本机 RPC 会一并结束。
+
+## SkyCAT 独立 TCP 后端（与 SkyRoof / RS-BA1 同时运行）
+
+在设置 → **连接方式** 中可选择原来的串口连接，或
+**SkyCAT 独立 TCP 辅助端口**，默认 `127.0.0.1:4536`。
+
+建议的连接方式：
+
+1. RS-BA1 Remote Utility 保持原本的 IC-9700 LAN 连接与虚拟 COM。
+2. SkyCAT 独占它当前使用的 CI-V COM 口，启动时启用默认的
+   `--switch-port 4536`；SkyRoof 仍使用 SkyCAT CAT `4532`，
+   如有需要继续接收 RS-BA1 的被动 LAN 频谱。
+3. Remote Control Switch 选择 **SkyCAT TCP**，填写
+   `127.0.0.1:4536`，保存后点击连接。
+
+该端口**不同于标准 rigctl 4532**，专门提供 DATA OFF/DATA MOD
+输入源、USB AF/IF 输出、压缩器、COMP LEVEL、CW 速度及
+RF POWER 的读取和设置。SAT 模式仅可读，**SkyCAT TCP 下的
+SAT 窗口、MAIN/SUB VFO、频率和模式修改被禁用**：这些操作仍由
+SkyRoof 负责，以避免 Doppler 和卫星模式冲突。
+
+原串口连接仍然可用。新连接不会占用第二个 COM，也不会
+增加 RS-BA1 LAN 会话，但所有命令最终仍与 SkyRoof 共用 SkyCAT
+的物理 CI-V 和串行事务锁；专用端口不能消除硬件带宽或响应延迟。
+切换「LAN」快捷操作仍沿用原逻辑，会开启压缩器；「USB」会关闭压缩器，
+操作前请注意当前话音设置。
