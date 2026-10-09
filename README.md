@@ -54,16 +54,16 @@ wails build
 ## SkyCAT 独立 TCP 后端（与 SkyRoof / RS-BA1 同时运行）
 
 在设置 → **连接方式** 中可选择原来的串口连接，或
-**SkyCAT 独立 TCP 辅助端口**，默认 `127.0.0.1:4536`。
+**SkyCAT 独立 TCP 辅助端口**，默认 `127.0.0.1:4537`。
 
 建议的连接方式：
 
 1. RS-BA1 Remote Utility 保持原本的 IC-9700 LAN 连接与虚拟 COM。
 2. SkyCAT 独占它当前使用的 CI-V COM 口，启动时启用默认的
-   `--switch-port 4536`；SkyRoof 仍使用 SkyCAT CAT `4532`，
+   `--switch-port 4537`；SkyRoof 仍使用 SkyCAT CAT `4532`，
    如有需要继续接收 RS-BA1 的被动 LAN 频谱。
 3. Remote Control Switch 选择 **SkyCAT TCP**，填写
-   `127.0.0.1:4536`，保存后点击连接。
+   `127.0.0.1:4537`，保存后点击连接。
 
 该端口**不同于标准 rigctl 4532**，专门提供 DATA OFF/DATA MOD
 输入源、USB AF/IF 输出、压缩器、COMP LEVEL、CW 速度及
