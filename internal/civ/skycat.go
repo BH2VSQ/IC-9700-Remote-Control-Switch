@@ -110,9 +110,12 @@ func (c *Client) skycatRequestLocked(ctx context.Context, request string) (strin
 	// radio query begins. Do not time out earlier than the server itself.
 	deadline := time.Now().Add(3500*time.Millisecond)
 	if d, ok := ctx.Deadline(); ok && d.Before(deadline) { deadline = d }
-	if err := c.skycatConn.SetDeadline(deadline); err != nil { return "", err }
-	defer c.skycatConn.SetDeadline(time.Time{})
-	if _, err := c.skycatConn.Write([]byte(request + "\n")); err != nil {
+	conn := c.skycatConn
+	if err := conn.SetDeadline(deadline); err != nil { return "", err }
+	// Capture the socket before I/O: errors may clear the client's pointer
+	// while deadline cleanup is still deferred.
+	defer func() { _ = conn.SetDeadline(time.Time{}) }()
+	if _, err := conn.Write([]byte(request + "\n")); err != nil {
 		c.closeSkyCATLocked()
 		return "", fmt.Errorf("SkyCAT write: %w", err)
 	}
