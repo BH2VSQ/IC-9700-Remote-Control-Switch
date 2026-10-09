@@ -103,7 +103,9 @@ func (a *App) Connect(port string, baud int) error {
 func (a *App) ConnectSkyCAT(address string) error {
 	a.opMu.Lock()
 	defer a.opMu.Unlock()
-	if err := a.civ.ConnectSkyCAT(address); err != nil { return err }
+	if err := a.civ.ConnectSkyCAT(address); err != nil {
+		return err
+	}
 	a.invalidateSatelliteCache()
 	return nil
 }
@@ -125,7 +127,11 @@ func (a *App) RefreshStatus() Status {
 		Connected: a.civ.Connected(),
 		Port:      a.civ.PortName(),
 	}
-	if a.civ.IsSkyCAT() { status.Transport = "skycat" } else { status.Transport = "serial" }
+	if a.civ.IsSkyCAT() {
+		status.Transport = "skycat"
+	} else {
+		status.Transport = "serial"
+	}
 	if !status.Connected {
 		status.Error = "Not connected"
 		status.LastTX, status.LastRX = a.civ.LastFrames()
@@ -161,7 +167,9 @@ func (a *App) RefreshStatus() Status {
 	// auxiliary UI cannot act on; leave VFO/SAT ownership with SkyRoof.
 	if !a.civ.IsSkyCAT() {
 		if v, err := a.civ.GetSatelliteMode(ctx); err != nil {
-			if status.Error == "" { status.Error = err.Error() }
+			if status.Error == "" {
+				status.Error = err.Error()
+			}
 		} else {
 			status.SatelliteMode = v
 			status.SatelliteModeKnown = true
@@ -419,7 +427,9 @@ func (a *App) readSatelliteStateLocked(ctx context.Context) (SatelliteStatus, er
 func (a *App) SetSatelliteMode(enabled bool) error {
 	a.opMu.Lock()
 	defer a.opMu.Unlock()
-	if a.civ.IsSkyCAT() { return fmt.Errorf("SkyCAT auxiliary port prohibits satellite mode changes; use SkyRoof") }
+	if a.civ.IsSkyCAT() {
+		return fmt.Errorf("SkyCAT auxiliary port prohibits satellite mode changes; use SkyRoof")
+	}
 
 	ctx := a.civContext()
 	if !a.civ.Connected() {
@@ -444,7 +454,9 @@ func (a *App) SetSatelliteMode(enabled bool) error {
 func (a *App) SetSatelliteFrequency(side string, hz uint64) error {
 	a.opMu.Lock()
 	defer a.opMu.Unlock()
-	if a.civ.IsSkyCAT() { return fmt.Errorf("SkyCAT auxiliary port prohibits frequency changes; use SkyRoof") }
+	if a.civ.IsSkyCAT() {
+		return fmt.Errorf("SkyCAT auxiliary port prohibits frequency changes; use SkyRoof")
+	}
 
 	ctx := a.civContext()
 	if !a.civ.Connected() {
@@ -474,7 +486,9 @@ func (a *App) SetSatelliteFrequency(side string, hz uint64) error {
 func (a *App) SetSatelliteOperatingMode(side string, mode string) error {
 	a.opMu.Lock()
 	defer a.opMu.Unlock()
-	if a.civ.IsSkyCAT() { return fmt.Errorf("SkyCAT auxiliary port prohibits mode changes; use SkyRoof") }
+	if a.civ.IsSkyCAT() {
+		return fmt.Errorf("SkyCAT auxiliary port prohibits mode changes; use SkyRoof")
+	}
 
 	ctx := a.civContext()
 	if !a.civ.Connected() {
@@ -502,9 +516,16 @@ func (a *App) SetSatelliteOperatingMode(side string, mode string) error {
 	return nil
 }
 
-func (a *App) OpenSatelliteWindow(theme string) error {
-	if a.civ.IsSkyCAT() { return fmt.Errorf("Satellite controls remain in SkyRoof when using SkyCAT TCP") }
-	return a.satellite.Start(a, theme)
+func (a *App) SetUIScale(scale int) error {
+	a.satellite.SetUIScale(scale)
+	return nil
+}
+
+func (a *App) OpenSatelliteWindow(theme string, scale int) error {
+	if a.civ.IsSkyCAT() {
+		return fmt.Errorf("Satellite controls remain in SkyRoof when using SkyCAT TCP")
+	}
+	return a.satellite.Start(a, theme, scale)
 }
 
 type SatelliteWindowState struct {

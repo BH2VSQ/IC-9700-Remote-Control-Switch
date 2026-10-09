@@ -4,7 +4,7 @@ html, body.sat-page {
   min-width: 0;
   min-height: 0;
   margin: 0;
-  overflow: hidden;
+  overflow: auto;
   background: #FFFFFF !important;
 }
 
@@ -41,10 +41,11 @@ html[data-theme="dark"] .sat-page {
 
 .sat-shell {
   width: 100%;
-  height: 100%;
+  min-height: 100%;
+  height: auto;
   background: var(--sat-bg);
   display: grid;
-  grid-template-rows: 82px 1fr;
+  grid-template-rows: 82px auto;
 }
 
 .sat-header {
@@ -142,6 +143,31 @@ html[data-theme="dark"] .field input:disabled, html[data-theme="dark"] .field se
 .message { min-height: 38px; display: flex; align-items: center; padding: 7px 11px; border-radius: 9px; border: 1px solid var(--sat-border); background: var(--sat-panel); color: var(--sat-muted); font-size: 11px; }
 .message.ok { border-color: rgba(91,206,250,.45); color: #1680A7; }
 .message.error { border-color: rgba(245,169,184,.65); color: #A84861; }
+
+/* Slightly larger default text and spacing for easier operation. */
+.sat-shell { grid-template-rows: 90px auto; }
+.sat-header { padding: 17px 20px 14px 22px; }
+.sat-kicker { font-size: 12px; }
+.sat-heading h1 { font-size: 27px; }
+.sat-header-actions { gap: 10px; }
+.sat-state-pill { min-width: 112px; height: 40px; font-size: 15px; }
+.sat-topmost-btn { min-width: 92px; height: 42px; font-size: 13px; }
+.pin-icon { font-size: 17px; }
+.sat-content { padding: 13px 20px 16px; gap: 10px; }
+.sat-card { border-radius: 15px; }
+.mode-card { min-height: 90px; padding: 14px 20px; }
+.section-caption { font-size: 13px; }
+.sat-mode-text { font-size: 20px; }
+.sat-toggle { min-width: 150px; height: 52px; font-size: 22px; }
+.vfo-card { padding: 15px 20px 16px; }
+.vfo-name { font-size: 21px; }
+.vfo-role { font-size: 12px; }
+.vfo-chip { min-width: 68px; height: 35px; font-size: 12px; }
+.vfo-grid { margin-top: 12px; gap: 12px; }
+.field { gap: 7px; }
+.field > span { font-size: 12px; }
+.field input, .field select { height: 42px; border-radius: 10px; font-size: 16px; }
+.message { min-height: 42px; padding: 9px 13px; font-size: 12px; }
 
 @media (max-height: 560px) {
   .sat-shell { grid-template-rows: 70px 1fr; }

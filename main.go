@@ -36,12 +36,12 @@ func runMainWindow() error {
 	application := NewApp()
 	return wails.Run(&options.App{
 		Title:            "IC-9700 Remote Audio Control",
-		Width:            980,
-		Height:           700,
-		MinWidth:         820,
-		MinHeight:        620,
+		Width:            1180,
+		Height:           800,
+		MinWidth:         980,
+		MinHeight:        680,
 		Frameless:        false,
-		DisableResize:    true,
+		DisableResize:    false,
 		BackgroundColour: &options.RGBA{R: 12, G: 17, B: 24, A: 255},
 		OnStartup:        application.startup,
 		OnShutdown:       application.shutdown,
@@ -70,22 +70,32 @@ func (s *SatelliteShell) Close() {
 	}
 }
 
+// SetUIScale resizes the native SAT window frame and its client area together.
+func (s *SatelliteShell) SetUIScale(scale int) {
+	if scale != 125 {
+		scale = 100
+	}
+	if s.ctx != nil {
+		runtime.WindowSetSize(s.ctx, 600*scale/100, 690*scale/100)
+	}
+}
+
 func runSatelliteWindow() error {
-	port, token, theme, err := satelliteArgs()
+	port, token, theme, scale, err := satelliteArgs()
 	if err != nil {
 		return err
 	}
 
 	shell := &SatelliteShell{}
-	handler, err := satelliteAssetHandler(port, token, theme)
+	handler, err := satelliteAssetHandler(port, token, theme, scale)
 	if err != nil {
 		return err
 	}
 
 	return wails.Run(&options.App{
 		Title:         "IC-9700 SAT",
-		Width:         520,
-		Height:        600,
+		Width:         600 * scale / 100,
+		Height:        690 * scale / 100,
 		DisableResize: true,
 		StartHidden:   true,
 		AssetsHandler: handler,
@@ -111,15 +121,15 @@ func runSatelliteWindow() error {
 	})
 }
 
-func satelliteAssetHandler(port int, token, theme string) (http.Handler, error) {
+func satelliteAssetHandler(port int, token, theme string, scale int) (http.Handler, error) {
 	dist, err := fs.Sub(assets, "frontend/dist")
 	if err != nil {
 		return nil, fmt.Errorf("open embedded SAT assets: %w", err)
 	}
 	fileServer := http.FileServer(http.FS(dist))
 	configScript := fmt.Sprintf(
-		"<script>window.__SAT_CONFIG__={port:%d,token:%s,theme:%s};</script>",
-		port, strconv.Quote(token), strconv.Quote(theme),
+		"<script>window.__SAT_CONFIG__={port:%d,token:%s,theme:%s,scale:%d};</script>",
+		port, strconv.Quote(token), strconv.Quote(theme), scale,
 	)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -152,26 +162,30 @@ func hasArg(name string) bool {
 	return false
 }
 
-func satelliteArgs() (int, string, string, error) {
+func satelliteArgs() (int, string, string, int, error) {
 	fs := flag.NewFlagSet("sat", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	_ = fs.Bool("sat", false, "run the SAT helper window")
 	port := fs.Int("rpc-port", 0, "main process SAT RPC port")
 	token := fs.String("rpc-token", "", "main process SAT RPC token")
 	theme := fs.String("theme", "day", "UI theme")
+	scale := fs.Int("ui-scale", 100, "UI scale (100 or 125)")
 	if err := fs.Parse(os.Args[1:]); err != nil {
-		return 0, "", "", err
+		return 0, "", "", 100, err
 	}
 	if *port <= 0 || *port > 65535 {
-		return 0, "", "", fmt.Errorf("invalid SAT RPC port: %d", *port)
+		return 0, "", "", 100, fmt.Errorf("invalid SAT RPC port: %d", *port)
 	}
 	if *token == "" {
-		return 0, "", "", fmt.Errorf("missing SAT RPC token")
+		return 0, "", "", 100, fmt.Errorf("missing SAT RPC token")
 	}
 	if *theme != "dark" {
 		*theme = "day"
 	}
-	return *port, *token, *theme, nil
+	if *scale != 125 {
+		*scale = 100
+	}
+	return *port, *token, *theme, *scale, nil
 }
 
 // Keep strconv linked in builds where future platform-specific argument

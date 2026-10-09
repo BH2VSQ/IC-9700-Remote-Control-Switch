@@ -22,6 +22,7 @@ type SatelliteWindowService struct {
 	server  *http.Server
 	process *exec.Cmd
 	token   string
+	uiScale int
 }
 
 type satelliteRPCRequest struct {
@@ -36,16 +37,18 @@ type satelliteRPCResponse struct {
 	Error     string           `json:"error,omitempty"`
 	Connected bool             `json:"connected"`
 	Satellite *SatelliteStatus `json:"satellite,omitempty"`
+	Scale     int              `json:"scale,omitempty"`
 }
 
 func NewSatelliteWindowService() *SatelliteWindowService {
-	return &SatelliteWindowService{}
+	return &SatelliteWindowService{uiScale: 100}
 }
 
-func (s *SatelliteWindowService) Start(owner *App, theme string) error {
+func (s *SatelliteWindowService) Start(owner *App, theme string, scale int) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	s.uiScale = normalizeUIScale(scale)
 	if s.process != nil {
 		if s.process.ProcessState == nil {
 			// The helper is already running: clicking SAT should bring it to
@@ -80,6 +83,16 @@ func (s *SatelliteWindowService) Start(owner *App, theme string) error {
 			return
 		}
 		writeRPC(w, http.StatusOK, satelliteRPCResponse{OK: true, Connected: status.Connected, Satellite: &status.Satellite})
+	}))
+	mux.HandleFunc("/api/sat/ui-scale", s.authorized(owner, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeRPC(w, http.StatusMethodNotAllowed, satelliteRPCResponse{OK: false, Error: "method not allowed"})
+			return
+		}
+		s.mu.Lock()
+		scale := normalizeUIScale(s.uiScale)
+		s.mu.Unlock()
+		writeRPC(w, http.StatusOK, satelliteRPCResponse{OK: true, Scale: scale})
 	}))
 	mux.HandleFunc("/api/sat/mode", s.authorized(owner, func(w http.ResponseWriter, r *http.Request) {
 		var req satelliteRPCRequest
@@ -136,6 +149,7 @@ func (s *SatelliteWindowService) Start(owner *App, theme string) error {
 		"--rpc-port", strconv.Itoa(listener.Addr().(*net.TCPAddr).Port),
 		"--rpc-token", s.token,
 		"--theme", sanitizeTheme(theme),
+		"--ui-scale", strconv.Itoa(normalizeUIScale(scale)),
 	}
 	cmd := exec.Command(exe, args...)
 	cmd.Dir = executableDir(exe)
@@ -154,6 +168,20 @@ func (s *SatelliteWindowService) Start(owner *App, theme string) error {
 		s.mu.Unlock()
 	}(cmd)
 	return nil
+}
+
+func normalizeUIScale(scale int) int {
+	if scale == 125 {
+		return 125
+	}
+	return 100
+}
+
+// SetUIScale synchronizes the selected scale with the running SAT process.
+func (s *SatelliteWindowService) SetUIScale(scale int) {
+	s.mu.Lock()
+	s.uiScale = normalizeUIScale(scale)
+	s.mu.Unlock()
 }
 
 func (s *SatelliteWindowService) Stop() {

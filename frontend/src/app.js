@@ -18,6 +18,7 @@ import {
   DownloadAndInstall,
   Exit,
   OpenSatelliteWindow,
+  SetUIScale,
 } from './wailsjs/go/main/App.js';
 
 import {
@@ -29,6 +30,8 @@ import {
 const INPUTS = ['MIC', 'ACC', 'MIC + ACC', 'USB', 'MIC + USB', 'LAN'];
 const STORAGE_KEY = 'ic9700-remote-io-connection';
 const THEME_KEY = 'ic9700-remote-io-theme';
+const UI_SCALE_KEY = 'ic9700-remote-io-ui-scale';
+const UI_SCALE_OPTIONS = [100, 125];
 let refreshingMain = false;
 let refreshingAssist = false;
 let assistState = null;
@@ -355,11 +358,72 @@ function applyTheme(theme) {
   localStorage.setItem(THEME_KEY, theme);
 }
 
+function getUIScale() {
+  try {
+    const saved = Number(localStorage.getItem(UI_SCALE_KEY));
+    return UI_SCALE_OPTIONS.includes(saved) ? saved : 100;
+  } catch (_) {
+    return 100;
+  }
+}
+
+function applyUIScale(scale, persist = true) {
+  const safeScale = UI_SCALE_OPTIONS.includes(Number(scale)) ? Number(scale) : 100;
+  const inversePercent = 10000 / safeScale;
+  const shell = document.querySelector('.app-shell');
+  if (shell) {
+    // Scale the full layout while reserving the reciprocal CSS width so the
+    // content grows with the native window instead of overflowing it.
+    shell.style.width = `${inversePercent}%`;
+    shell.style.marginInline = '0';
+    shell.style.zoom = `${safeScale}%`;
+  }
+  const overlay = $('connectOverlay');
+  if (overlay) {
+    if (safeScale === 100) {
+      overlay.style.zoom = '';
+      overlay.style.width = '';
+      const dialog = overlay.querySelector('.connection-dialog');
+      if (dialog) dialog.style.maxHeight = '';
+
+      overlay.style.height = '';
+      overlay.style.inset = '';
+      overlay.style.left = '';
+      overlay.style.top = '';
+    } else {
+      overlay.style.inset = 'auto';
+      overlay.style.left = '0';
+      overlay.style.top = '0';
+      overlay.style.width = `${inversePercent}vw`;
+      overlay.style.height = `${inversePercent}vh`;
+      const dialog = overlay.querySelector('.connection-dialog');
+      if (dialog) dialog.style.maxHeight = `calc(${inversePercent}vh - 40px)`;
+      overlay.style.zoom = `${safeScale}%`;
+    }
+  }
+  const selector = $('uiScaleSelect');
+  if (selector) selector.value = String(safeScale);
+  if (persist) {
+    try { localStorage.setItem(UI_SCALE_KEY, String(safeScale)); } catch (err) {
+      console.warn('无法保存界面放大倍率：', err);
+    }
+  }
+  // Resize the native window border/frame as well as synchronizing the SAT window.
+  void SetUIScale(safeScale).catch((err) => {
+    console.warn('调整原生窗口大小失败：', err);
+  });
+  return safeScale;
+}
+
 $('exitBtn').onclick = async () => {
   try { await Exit(); } catch (err) { console.error(err); }
 };
 
 $('connectMenuBtn').onclick = () => openConnectDialog();
+$('uiScaleSelect').onchange = () => {
+  const scale = applyUIScale(Number($('uiScaleSelect').value));
+  showMessage(`界面放大倍率已设置为 ${scale}%`, 'ok');
+};
 $('closeConnectBtn').onclick = closeConnectDialog;
 $('cancelConnectBtn').onclick = closeConnectDialog;
 $('connectOverlay').addEventListener('click', (event) => {
@@ -497,7 +561,7 @@ setupWheelSlider('rfPowerWheelZone', 'rfPowerSlider', 0, 100, 1, (value) => {
 
 $('satMenuBtn').onclick = async () => {
   try {
-    await OpenSatelliteWindow(document.documentElement.dataset.theme || 'day');
+    await OpenSatelliteWindow(document.documentElement.dataset.theme || 'day', getUIScale());
   } catch (err) {
     showMessage(`打开 SAT 窗口失败：${err?.message || err}`, 'error');
   }
@@ -535,6 +599,7 @@ $('updateBtn').onclick = async () => {
 makeChoiceButtons('dataOffButtons', SetDataOffInput);
 makeChoiceButtons('dataButtons', SetDataInput);
 applyTheme(localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'day');
+applyUIScale(getUIScale());
 
 const savedOnStartup = getSavedConnection();
 if (savedOnStartup?.transport !== 'skycat')

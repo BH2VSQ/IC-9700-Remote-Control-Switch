@@ -3,6 +3,8 @@ const injected = window.__SAT_CONFIG__ || {};
 const rpcPort = Number(params.get('port') || injected.port || 0);
 const rpcToken = params.get('token') || injected.token || '';
 const configuredTheme = (params.get('theme') || injected.theme) === 'dark' ? 'dark' : 'day';
+const UI_SCALE_KEY = 'ic9700-remote-io-ui-scale';
+const UI_SCALE_OPTIONS = [100, 125];
 const RADIO_MODES = ['LSB', 'USB', 'AM', 'CW', 'RTTY', 'FM', 'CW-R', 'RTTY-R', 'DV'];
 const $ = (id) => document.getElementById(id);
 
@@ -16,6 +18,50 @@ const pendingFrequency = { RX: null, TX: null };
 function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
 }
+
+let activeUIScale = null;
+
+function applyUIScale(value) {
+  const savedScale = Number(value);
+  const scale = UI_SCALE_OPTIONS.includes(savedScale) ? savedScale : 100;
+  if (activeUIScale === scale) return;
+  activeUIScale = scale;
+  const shell = document.querySelector('.sat-shell');
+  if (shell) {
+    const inversePercent = 10000 / scale;
+    shell.style.width = `${inversePercent}%`;
+    shell.style.minHeight = `${inversePercent}%`;
+    shell.style.marginInline = '0';
+    shell.style.zoom = `${scale}%`;
+  }
+  // This method is bound by Wails in the SAT helper process and resizes the
+  // actual native window frame to match the content scale.
+  const resize = window.go?.main?.SatelliteShell?.SetUIScale;
+  if (typeof resize === 'function') {
+    Promise.resolve().then(() => resize(scale)).catch((err) => console.warn('SAT 窗口缩放失败：', err));
+  }
+}
+
+async function syncUIScale() {
+  try {
+    const data = await rpc('/api/sat/ui-scale');
+    if (UI_SCALE_OPTIONS.includes(Number(data.scale))) {
+      applyUIScale(Number(data.scale));
+      return;
+    }
+  } catch (_) {
+    // During startup, use the scale passed to the helper process.
+  }
+  try {
+    applyUIScale(Number(window.__SAT_CONFIG__?.scale || localStorage.getItem(UI_SCALE_KEY)));
+  } catch (_) {
+    applyUIScale(100);
+  }
+}
+
+window.addEventListener('storage', (event) => {
+  if (event.key === UI_SCALE_KEY) syncUIScale();
+});
 
 function setText(id, value) {
   const el = $(id);
@@ -241,9 +287,11 @@ $('rxModeSelect').addEventListener('change', () => changeMode('RX'));
 $('txModeSelect').addEventListener('change', () => changeMode('TX'));
 
 applyTheme(configuredTheme);
+syncUIScale();
 setupModes();
 updateTopmostUI();
 setEnabled(false);
 focusOwnWindow();
 refresh();
 window.setInterval(refresh, 3500);
+window.setInterval(syncUIScale, 1000);

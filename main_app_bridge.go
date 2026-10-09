@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 
+	"github.com/wailsapp/wails/v2/pkg/runtime"
+
 	backend "ic9700-remote-io/internal/app"
 )
 
@@ -11,6 +13,7 @@ import (
 // frontend/wailsjs/go/main/App.js, which matches the frontend imports.
 type App struct {
 	backend *backend.App
+	ctx     context.Context
 }
 
 func NewApp() *App {
@@ -18,7 +21,19 @@ func NewApp() *App {
 }
 
 func (a *App) startup(ctx context.Context) {
+	a.ctx = ctx
 	a.backend.Startup(ctx)
+}
+
+// SetUIScale updates the native window dimensions as well as the SAT helper scale.
+func (a *App) SetUIScale(scale int) error {
+	if scale != 125 {
+		scale = 100
+	}
+	if a.ctx != nil {
+		runtime.WindowSetSize(a.ctx, 1180*scale/100, 800*scale/100)
+	}
+	return a.backend.SetUIScale(scale)
 }
 
 func (a *App) shutdown(ctx context.Context) {
@@ -34,7 +49,7 @@ func (a *App) Connect(port string, baud int) error {
 }
 
 func (a *App) ConnectSkyCAT(address string) error {
-  return a.backend.ConnectSkyCAT(address)
+	return a.backend.ConnectSkyCAT(address)
 }
 
 func (a *App) Disconnect() error {
@@ -105,8 +120,8 @@ func (a *App) SetSatelliteOperatingMode(side string, mode string) error {
 	return a.backend.SetSatelliteOperatingMode(side, mode)
 }
 
-func (a *App) OpenSatelliteWindow(theme string) error {
-	return a.backend.OpenSatelliteWindow(theme)
+func (a *App) OpenSatelliteWindow(theme string, scale int) error {
+	return a.backend.OpenSatelliteWindow(theme, scale)
 }
 
 func (a *App) CheckForUpdates() (backend.UpdateInfo, error) {

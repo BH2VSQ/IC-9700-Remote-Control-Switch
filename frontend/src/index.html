@@ -160,11 +160,25 @@
       <div class="dialog-head">
         <div>
           <div class="dialog-kicker">CONNECTION</div>
-          <h2>端口配置</h2>
+          <h2>设置</h2>
         </div>
         <button id="closeConnectBtn" class="close-btn" title="关闭">×</button>
       </div>
 
+      <section class="settings-section">
+        <div class="settings-section-title">界面显示</div>
+        <label class="field scale-field">
+          <span>界面放大倍率</span>
+          <select id="uiScaleSelect" aria-label="界面放大倍率">
+            <option value="100">100%</option>
+            <option value="125">125%</option>
+          </select>
+          <small class="field-hint">切换后立即生效，并自动保存。</small>
+        </label>
+      </section>
+
+      <section class="settings-section connection-settings-section">
+        <div class="settings-section-title">连接配置</div>
       <label class="field" style="margin-top:12px">
         <span>连接方式</span>
         <select id="transportSelect">
@@ -197,6 +211,7 @@
         <input id="skycatAddress" type="text" value="127.0.0.1:4537"
           placeholder="127.0.0.1:4537" spellcheck="false" />
       </label>
+      </section>
 
       <div id="connectDialogMessage" class="dialog-message">选择端口和波特率后点击“保存”。保存后请手动点击主界面的“连接”。</div>
       <div class="dialog-actions">
