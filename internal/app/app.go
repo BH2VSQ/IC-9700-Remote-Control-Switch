@@ -156,19 +156,21 @@ func (a *App) RefreshStatus() Status {
 		}
 	}
 
-	// Satellite mode changes the active VFO/context used by subsequent CI-V
-	// controls. Read it as the final lightweight status query so the frontend
-	// can detect SAT entry/exit without allowing a SAT-mode read error to block
-	// the normal DATA/USB status fields above.
-	if v, err := a.civ.GetSatelliteMode(ctx); err != nil {
-		if status.Error == "" {
-			status.Error = err.Error()
+	// The SAT window is intentionally disabled on the dedicated SkyCAT port.
+	// Do not waste a fourth CI-V read every 5 seconds for a value that the
+	// auxiliary UI cannot act on; leave VFO/SAT ownership with SkyRoof.
+	if !a.civ.IsSkyCAT() {
+		if v, err := a.civ.GetSatelliteMode(ctx); err != nil {
+			if status.Error == "" { status.Error = err.Error() }
+		} else {
+			status.SatelliteMode = v
+			status.SatelliteModeKnown = true
 		}
-	} else {
-		status.SatelliteMode = v
-		status.SatelliteModeKnown = true
 	}
 
+	// A timeout closes the auxiliary TCP stream to prevent stale replies
+	// contaminating the next CI-V read. Reflect that disconnect immediately.
+	status.Connected = a.civ.Connected()
 	status.LastTX, status.LastRX = a.civ.LastFrames()
 	return status
 }
