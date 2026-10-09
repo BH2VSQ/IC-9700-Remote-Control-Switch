@@ -8,6 +8,7 @@ import (
   "strings"
   "sync"
   "testing"
+  "time"
 )
 
 func TestSkyCATSelectorAllowlist(t *testing.T) {
@@ -88,7 +89,31 @@ func TestSkyCATConnectionUsesDedicatedProtocolAndPreservesCivDecoders(t *testing
 
 func TestSkyCATRejectsRemoteEndpoint(t *testing.T) {
   c := NewClient()
-  if err := c.ConnectSkyCAT("8.8.8.8:4536"); err == nil {
+  if err := c.ConnectSkyCAT("8.8.8.8:4537"); err == nil {
     t.Fatal("non-loopback endpoint must be rejected")
+  }
+}
+
+func TestSkyCATTimeoutClosesTransportToAvoidStaleReplies(t *testing.T) {
+  client, server := net.Pipe()
+  defer server.Close()
+  c := NewClient()
+  c.skycatConn = client
+  c.skycatReader = bufio.NewReader(client)
+  c.skycatAddr = "127.0.0.1:4537"
+
+  go func() {
+    _, _ = bufio.NewReader(server).ReadString('\n')
+    // The radio would return a reply too late for the original request.
+    time.Sleep(120 * time.Millisecond)
+    _, _ = server.Write([]byte("VALUE 05\n"))
+  }()
+  ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
+  defer cancel()
+  if _, err := c.skycatRequestLocked(ctx, "GET DATA_OFF"); err == nil {
+    t.Fatal("expected timeout")
+  }
+  if c.Connected() || c.skycatReader != nil {
+    t.Fatal("timed-out socket must not be reused for another CI-V query")
   }
 }
