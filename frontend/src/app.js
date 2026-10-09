@@ -1,6 +1,7 @@
 import {
   ListSerialPorts,
   Connect,
+  ConnectSkyCAT,
   Disconnect,
   RefreshStatus,
   RefreshRadioAssist,
@@ -46,7 +47,9 @@ function setConnectionUI(connected, port = '', saved = null) {
   $('connectionText').textContent = connected ? '已连接' : '未连接';
   $('connectionDetail').textContent = connected
     ? `${port} · CI-V`
-    : saved?.port ? `${saved.port} · ${saved.baud} bps · 已保存` : '未配置端口';
+    : saved?.transport === 'skycat'
+      ? `SkyCAT ${saved.address || '127.0.0.1:4536'} · 已保存`
+      : saved?.port ? `${saved.port} · ${saved.baud} bps · 已保存` : '未配置端口';
   $('mainConnectBtn').textContent = connected ? '断开连接' : '连接';
 }
 
@@ -99,8 +102,8 @@ function getSavedConnection() {
   }
 }
 
-function saveConnection(port, baud) {
-  const config = { port, baud };
+function saveConnection(port, baud, transport = 'serial', address = '127.0.0.1:4536') {
+  const config = { port, baud, transport, address };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
   return config;
 }
@@ -126,10 +129,19 @@ async function refreshPorts(selected = '') {
   if (preferred && ports.includes(preferred)) select.value = preferred;
 }
 
+function updateTransportFields() {
+  const skycat = $('transportSelect').value === 'skycat';
+  $('serialConnectionFields').style.display = skycat ? 'none' : 'grid';
+  $('skycatConnectionFields').style.display = skycat ? 'grid' : 'none';
+}
+
 function openConnectDialog(message = '') {
   const saved = getSavedConnection();
   $('connectOverlay').classList.remove('hidden');
+  $('transportSelect').value = saved?.transport === 'skycat' ? 'skycat' : 'serial';
+  $('skycatAddress').value = saved?.address || '127.0.0.1:4536';
   $('baudSelect').value = String(saved?.baud || 115200);
+  updateTransportFields();
   $('connectDialogMessage').textContent = message || '选择端口和波特率后点击“保存”。保存后请手动点击主界面的“连接”。';
   refreshPorts(saved?.port).catch((err) => {
     $('connectDialogMessage').textContent = `串口扫描失败：${err?.message || err}`;
@@ -142,13 +154,15 @@ function closeConnectDialog() {
 
 async function attemptConnectFromSaved() {
   const saved = getSavedConnection();
-  if (!saved?.port) {
-    openConnectDialog('尚未配置串口，请先保存端口配置。');
+  if (!saved || (saved.transport !== 'skycat' && !saved.port)) {
+    openConnectDialog('请先配置串口或 SkyCAT TCP 地址。');
     return false;
   }
   try {
-    showMessage(`正在连接 ${saved.port}…`);
-    await Connect(saved.port, Number(saved.baud || 115200));
+    const isSkyCAT = saved.transport === 'skycat';
+    showMessage(`正在连接 ${isSkyCAT ? saved.address : saved.port}…`);
+    if (isSkyCAT) await ConnectSkyCAT(saved.address || '127.0.0.1:4536');
+    else await Connect(saved.port, Number(saved.baud || 115200));
     await refreshAll();
     showMessage('连接成功，已读取电台当前设置', 'ok');
     return true;
@@ -247,7 +261,10 @@ async function refresh() {
       button.disabled = !status.connected;
     }
     $('refreshState').disabled = !status.connected;
-    $('satMenuBtn').disabled = false;
+    $('satMenuBtn').disabled = status.transport === 'skycat';
+    $('satMenuBtn').title = status.transport === 'skycat'
+      ? 'SkyCAT 辅助端口不允许修改卫星 VFO 或模式，请使用 SkyRoof'
+      : '卫星控制';
     if (!status.connected) {
       setAssistState(null);
     }
@@ -322,23 +339,32 @@ $('cancelConnectBtn').onclick = closeConnectDialog;
 $('connectOverlay').addEventListener('click', (event) => {
   if (event.target === $('connectOverlay')) closeConnectDialog();
 });
+$('transportSelect').onchange = updateTransportFields;
 $('refreshPorts').onclick = () => refreshPorts($('portSelect').value).catch((err) => {
   $('connectDialogMessage').textContent = `串口扫描失败：${err?.message || err}`;
 });
 $('applyConnectBtn').onclick = async () => {
   const port = $('portSelect').value;
   const baud = Number($('baudSelect').value);
-  if (!port) {
+  const transport = $('transportSelect').value;
+  const address = $('skycatAddress').value.trim() || '127.0.0.1:4536';
+  if (transport === 'serial' && !port) {
     $('connectDialogMessage').textContent = '请先选择有效串口。';
+    return;
+  }
+  if (transport === 'skycat' && !/^(localhost|127\\.0\\.0\\.1|\\[::1\\]):[0-9]{1,5}$/i.test(address)) {
+    $('connectDialogMessage').textContent = '请输入本地 SkyCAT 地址，如 127.0.0.1:4536。';
     return;
   }
   try {
     $('applyConnectBtn').disabled = true;
-    $('connectDialogMessage').textContent = `正在保存 ${port}…`;
-    saveConnection(port, baud);
+    $('connectDialogMessage').textContent = '正在保存连接设置…';
+    saveConnection(port, baud, transport, address);
     closeConnectDialog();
     await refresh();
-    showMessage(`端口配置已保存：${port} · ${baud} bps，请手动点击“连接”`, 'ok');
+    showMessage(transport === 'skycat'
+      ? `已保存 SkyCAT 独立端口 ${address}，请手动点击“连接”`
+      : `端口配置已保存：${port} · ${baud} bps，请手动点击“连接”`, 'ok');
   } finally {
     $('applyConnectBtn').disabled = false;
   }
