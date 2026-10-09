@@ -33,6 +33,8 @@ let refreshingMain = false;
 let refreshingAssist = false;
 let assistState = null;
 let lastSatelliteMode = null;
+let connectedInUI = false;
+let connectActionBusy = false;
 
 const $ = (id) => document.getElementById(id);
 
@@ -49,6 +51,7 @@ function showSatMessage(text, kind = '') {
 }
 
 function setConnectionUI(connected, port = '', saved = null) {
+  connectedInUI = !!connected;
   $('connectionLamp').className = `lamp ${connected ? 'online' : 'offline'}`;
   $('connectionText').textContent = connected ? '已连接' : '未连接';
   $('connectionDetail').textContent = connected
@@ -406,17 +409,27 @@ $('applyConnectBtn').onclick = async () => {
 };
 
 $('mainConnectBtn').onclick = async () => {
-  const status = await RefreshStatus();
-  if (status.connected) {
-    await perform(async () => {
+  // A status request may be waiting for the radio; pressing Connect must
+  // never wait on a redundant RefreshStatus before beginning the action.
+  if (connectActionBusy) return;
+  connectActionBusy = true;
+  $('mainConnectBtn').disabled = true;
+  try {
+    if (connectedInUI) {
       await Disconnect();
+      setConnectionUI(false, '', getSavedConnection());
       assistState = null;
-      await refresh();
       setAssistState(null);
-    }, '断开连接');
-    return;
+      showMessage('已断开连接', 'ok');
+    } else {
+      await attemptConnectFromSaved();
+    }
+  } catch (err) {
+    showMessage(`连接操作失败：${err?.message || err}`, 'error');
+  } finally {
+    connectActionBusy = false;
+    $('mainConnectBtn').disabled = false;
   }
-  await attemptConnectFromSaved();
 };
 
 $('refreshState').onclick = () => perform(refreshAll, '读取状态');
